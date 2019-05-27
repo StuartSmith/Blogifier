@@ -2,6 +2,7 @@
 using Core.Helpers;
 using Core.Services;
 using Markdig;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewEngines;
@@ -30,6 +31,7 @@ namespace App.Controllers
             _viewEngine = viewEngine;
         }
 
+        //[Route("blog")]
         public async Task<IActionResult> Index(int page = 1, string term = "")
         {
             var blog = await _db.CustomFields.GetBlogSettings();
@@ -188,7 +190,14 @@ namespace App.Controllers
             }
         }
 
-        [HttpPost, Route("account/logout")]
+        [HttpGet("admin")]
+        [Authorize]
+        public IActionResult Admin()
+        {
+            return Redirect("~/admin/posts");
+        }
+
+        [HttpPost("account/logout")]
         public async Task<IActionResult> Logout()
         {
             await _sm.SignOutAsync();

@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Core.Api
 {
@@ -33,27 +34,28 @@ namespace Core.Api
         [HttpGet]
         public async Task<AssetsModel> Get(int page = 1, string filter = "", string search = "")
         {
-            var pager = new Pager(page);
+            var blog = await _data.CustomFields.GetBlogSettings();
+            var pager = new Pager(page, blog.ItemsPerPage);
             IEnumerable<AssetItem> items;
 
             if (string.IsNullOrEmpty(search))
             {
                 if (filter == "filterImages")
                 {
-                    items = await _store.Find(a => a.AssetType == AssetType.Image, pager);
+                    items = await _store.Find(a => a.AssetType == AssetType.Image, pager, "", !User.Identity.IsAuthenticated);
                 }
                 else if (filter == "filterAttachments")
                 {
-                    items = await _store.Find(a => a.AssetType == AssetType.Attachment, pager);
+                    items = await _store.Find(a => a.AssetType == AssetType.Attachment, pager, "", !User.Identity.IsAuthenticated);
                 }
                 else
                 {
-                    items = await _store.Find(null, pager);
+                    items = await _store.Find(null, pager, "", !User.Identity.IsAuthenticated);
                 }
             }
             else
             {
-                items = await _store.Find(a => a.Title.Contains(search), pager);
+                items = await _store.Find(a => a.Title.Contains(search), pager, "", !User.Identity.IsAuthenticated);
             }
 
             if (page < 1 || page > pager.LastPage)
@@ -67,13 +69,14 @@ namespace Core.Api
         }
 
         /// <summary>
-        /// Select an asset in the File Manager to include in the post
+        /// Select an asset in the File Manager (authentication required)
         /// </summary>
         /// <param name="type">Type of asset (post cover, logo, avatar or post image/attachment)</param>
         /// <param name="asset">Selected asset</param>
         /// <param name="post">Post ID</param>
         /// <returns>Asset Item</returns>
         [HttpGet("pick")]
+        [Authorize]
         public async Task<AssetItem> Pick(string type, string asset, string post)
         {
             if (type == "postCover")
@@ -110,11 +113,12 @@ namespace Core.Api
         }
 
         /// <summary>
-        /// Upload file(s) to user data store
+        /// Upload file(s) to user data store (authentication required)
         /// </summary>
         /// <param name="files">Selected files</param>
         /// <returns>Success or internal error</returns>
         [HttpPost("upload")]
+        [Authorize]
         public async Task<IActionResult> Upload(ICollection<IFormFile> files)
         {
             try
@@ -132,11 +136,12 @@ namespace Core.Api
         }
 
         /// <summary>
-        /// Remove file from user data store, authentication required
+        /// Remove file from user data store (authentication required)
         /// </summary>
         /// <param name="url">Relative URL of the file to remove</param>
         /// <returns></returns>
         [HttpDelete("remove")]
+        [Authorize]
         public IActionResult Remove(string url)
         {
             try

@@ -212,6 +212,25 @@ namespace Core
             return text;
         }
 
+        public static string SanitizePath(this string str)
+        {
+            str = str.Replace("%2E", ".").Replace("%2F", "/");
+
+            if (str.Contains("..") || str.Contains("//"))
+                throw new ApplicationException("Invalid directory path");
+
+            return str;
+        }
+
+        public static string SanitizeFileName(this string str)
+        {
+            str = str.SanitizePath();
+
+            //TODO: add filename specific validation here
+
+            return str;
+        }
+
         #endregion
     }
 }

@@ -15,7 +15,7 @@
         </member>
         <member name="M:Core.Api.AssetsController.Pick(System.String,System.String,System.String)">
             <summary>
-            Select an asset in the File Manager to include in the post
+            Select an asset in the File Manager (authentication required)
             </summary>
             <param name="type">Type of asset (post cover, logo, avatar or post image/attachment)</param>
             <param name="asset">Selected asset</param>
@@ -24,14 +24,14 @@
         </member>
         <member name="M:Core.Api.AssetsController.Upload(System.Collections.Generic.ICollection{Microsoft.AspNetCore.Http.IFormFile})">
             <summary>
-            Upload file(s) to user data store
+            Upload file(s) to user data store (authentication required)
             </summary>
             <param name="files">Selected files</param>
             <returns>Success or internal error</returns>
         </member>
         <member name="M:Core.Api.AssetsController.Remove(System.String)">
             <summary>
-            Remove file from user data store, authentication required
+            Remove file from user data store (authentication required)
             </summary>
             <param name="url">Relative URL of the file to remove</param>
             <returns></returns>
@@ -52,33 +52,33 @@
         </member>
         <member name="M:Core.Api.AuthorsController.Post(Core.Data.Models.RegisterModel)">
             <summary>
-            Register new author. Authorized admins only.
+            Register new author (admins only)
             </summary>
             <param name="model">Author model</param>
             <returns>Created Author object</returns>
         </member>
         <member name="M:Core.Api.AuthorsController.Update(Core.Data.Author)">
             <summary>
-            Update author
+            Update author (admins only)
             </summary>
             <param name="model">Author model</param>
             <returns>Success or 500 error</returns>
         </member>
         <member name="M:Core.Api.AuthorsController.ChangePwd(Core.Data.Models.ChangePasswordModel)">
             <summary>
-            Change author password. Authorized users only.
+            Change author password (authentication required)
             </summary>
             <param name="model">Author model</param>
             <returns>Success or 500 error</returns>
         </member>
         <member name="M:Core.Api.AuthorsController.Delete(System.String)">
             <summary>
-            Delete author, from membership, database and file system. Admin only.
+            Delete author, from membership, database and file system (admins only)
             </summary>
             <param name="id">Author ID</param>
             <returns>Success or 500 error</returns>
         </member>
-        <member name="M:Core.Api.PostsController.Search(System.String,System.String,System.String,System.Int32)">
+        <member name="M:Core.Api.PostsController.Search(System.String,System.String,System.String,System.Int32,System.String)">
             <summary>
             Search blog posts by term
             </summary>
@@ -86,9 +86,10 @@
             <param name="author">Author</param>
             <param name="include">Posts to include: all by default; F - featured, D - drafts, P - published</param>
             <param name="page">Page number</param>
+            <param name="format">Otput format: html or markdown; default = html;</param>
             <returns>Model with list of posts and pager</returns>
         </member>
-        <member name="M:Core.Api.PostsController.Get(System.String,System.String,System.String,System.Int32)">
+        <member name="M:Core.Api.PostsController.Get(System.String,System.String,System.String,System.Int32,System.String)">
             <summary>
             Get list of blog posts
             </summary>
@@ -96,18 +97,20 @@
             <param name="category">Post category</param>
             <param name="include">Posts to include: all by default; F - featured, D - drafts, P - published</param>
             <param name="page">Page number</param>
+            <param name="format">Otput format: html or markdown; default = html;</param>
             <returns>Model with list of posts and pager</returns>
         </member>
-        <member name="M:Core.Api.PostsController.GetPost(System.Int32)">
+        <member name="M:Core.Api.PostsController.GetPost(System.Int32,System.String)">
             <summary>
             Get single post by ID
             </summary>
             <param name="id">Post ID</param>
+            <param name="format">Otput format: html or markdown; default = html;</param>
             <returns>Post item</returns>
         </member>
         <member name="M:Core.Api.PostsController.Publish(System.Int32,System.String)">
             <summary>
-            Set post as published or draft
+            Set post as published or draft (authentication required)
             </summary>
             <param name="id">Post ID</param>
             <param name="flag">Flag; P - publish, U - unpublish</param>
@@ -115,7 +118,7 @@
         </member>
         <member name="M:Core.Api.PostsController.Feature(System.Int32,System.String)">
             <summary>
-            Set post as featured
+            Set post as featured (admins only)
             </summary>
             <param name="id">Post ID</param>
             <param name="flag">Flag; F - featured, U - remove from featured</param>
@@ -123,14 +126,14 @@
         </member>
         <member name="M:Core.Api.PostsController.Post(Core.Data.PostItem)">
             <summary>
-            Save blog post
+            Save blog post (authentication required)
             </summary>
             <param name="post">Post item</param>
             <returns>Saved post item</returns>
         </member>
         <member name="M:Core.Api.PostsController.Remove(System.Int32)">
             <summary>
-            Remove post item
+            Remove post item (authentication required)
             </summary>
             <param name="id">Post ID</param>
             <returns>Success or failure</returns>
@@ -143,34 +146,34 @@
         </member>
         <member name="M:Core.Api.SettingsController.Get">
             <summary>
-            Get blog settings
+            Get blog settings (admins only)
             </summary>
             <returns>Blog settings</returns>
         </member>
         <member name="M:Core.Api.SettingsController.Post(Core.Data.BlogItem)">
             <summary>
-            Save blog settings
+            Save blog settings (admins only)
             </summary>
             <param name="model">Blog settings item</param>
             <returns>Saved blog item</returns>
         </member>
         <member name="M:Core.Api.ThemesController.Get(System.Int32)">
             <summary>
-            Get list of themes
+            Get list of themes (authentication required)
             </summary>
             <param name="page">Page number</param>
             <returns>List of themes</returns>
         </member>
         <member name="M:Core.Api.ThemesController.Put(System.String)">
             <summary>
-            Set theme as current for a blog
+            Set theme as current for a blog (admins only)
             </summary>
             <param name="id">Theme ID</param>
             <returns>Success or failure</returns>
         </member>
         <member name="M:Core.Api.ThemesController.Delete(System.String)">
             <summary>
-            Remove and unistall theme from the blog
+            Remove and unistall theme from the blog (admins only)
             </summary>
             <param name="id">Theme ID</param>
             <returns>Success or failure</returns>
