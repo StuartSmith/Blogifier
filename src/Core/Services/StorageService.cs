@@ -2,7 +2,7 @@
 using Core.Helpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -28,9 +28,12 @@ namespace Core.Services
 
         IList<string> GetAssets(string path);
         IList<string> GetThemes();
-        IList<WidgetItem> GetWidgets(string theme);
+        bool SelectTheme(string theme);
 
         string GetHtmlTemplate(string template);
+
+        string GetThemeData(string theme);
+        Task SaveThemeData(ThemeDataModel model, bool isActive);
 
         Task<IEnumerable<AssetItem>> Find(Func<AssetItem, bool> predicate, Pager pager, string path = "", bool sanitize = false);
 
@@ -112,30 +115,115 @@ namespace Core.Services
         public IList<string> GetThemes()
         {
             var items = new List<string>();
-            var dir = Path.Combine(GetAppRoot(), $"Views{_separator}Themes");
+            var dir = Path.Combine(GetAppRoot(), $"wwwroot{_separator}themes");
             try
             {
                 foreach (string d in Directory.GetDirectories(dir))
-                    items.Add(Path.GetFileName(d));
+                {
+                    if(!d.EndsWith("_active"))
+                        items.Add(Path.GetFileName(d));
+                }
             }
             catch { }
             return items;
         }
 
-        public IList<WidgetItem> GetWidgets(string theme)
+        public bool SelectTheme(string theme)
         {
-            var widgets = new List<WidgetItem>();
-            string jsonFile = $"{AppSettings.ContentRootPath}{_separator}Views{_separator}Themes{_separator}{theme}{_separator}{theme}.json";
+            var dir = Path.Combine(GetAppRoot(), $"wwwroot{_separator}themes");
+            string temp = $"{dir}{_separator}_temp";
+            string active = $"{dir}{_separator}_active";
+            string source = $"{dir}{_separator}{theme}";
 
+            try
+            {
+                // backup
+                if (Directory.Exists(active))
+                    Directory.Move(active, temp);
+
+                Directory.CreateDirectory(active);
+
+                CopyFilesRecursively(new DirectoryInfo(source), new DirectoryInfo(active));
+
+                Directory.Delete(temp, true);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    // restore and cleanup
+                    if (Directory.Exists(temp))
+                    {
+                        if (Directory.Exists(active))
+                            Directory.Delete(active, true);
+
+                        Directory.Move(temp, active);
+                    }
+                }
+                catch { }
+                
+                _logger.LogError($"Error replacing theme in the file system: {ex.Message}");
+                return false;
+            }
+        }
+
+        static void CopyFilesRecursively(DirectoryInfo source, DirectoryInfo target)
+        {
+            foreach (DirectoryInfo dir in source.GetDirectories())
+                CopyFilesRecursively(dir, target.CreateSubdirectory(dir.Name));
+            foreach (FileInfo file in source.GetFiles())
+                file.CopyTo(Path.Combine(target.FullName, file.Name));
+        }
+
+        public string GetThemeData(string theme)
+        {
+            string jsonFile = $"{AppSettings.WebRootPath}{_separator}themes{_separator}{theme}{_separator}assets{_separator}{Constants.ThemeDataFile}";
             if (File.Exists(jsonFile))
             {
                 using (StreamReader r = new StreamReader(jsonFile))
                 {
-                    string json = r.ReadToEnd();
-                    widgets = JsonConvert.DeserializeObject<List<WidgetItem>>(json);
+                    return r.ReadToEnd();
                 }
             }
-            return widgets;
+            return "";
+        }
+
+        public async Task SaveThemeData(ThemeDataModel model, bool isActive)
+        {
+            if (!GetThemes().Contains(model.Theme))
+            {
+                var msg = $"Theme \"{model.Theme}\" does not exist";
+                _logger.LogError(msg);
+                throw new ApplicationException(msg);
+            }
+            try
+            {
+                var tmpObj = JContainer.Parse(model.Data);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                throw new ApplicationException(ex.Message);
+            }
+            string jsonFile = $"{AppSettings.WebRootPath}{_separator}themes{_separator}{model.Theme}{_separator}assets{_separator}{Constants.ThemeDataFile}";
+            if (File.Exists(jsonFile))
+            {
+                File.Delete(jsonFile);
+                File.WriteAllText(jsonFile, model.Data);
+            }
+            if (isActive)
+            {
+                jsonFile = $"{AppSettings.WebRootPath}{_separator}themes{_separator}_active{_separator}assets{_separator}{Constants.ThemeDataFile}";
+                if (File.Exists(jsonFile))
+                {
+                    File.Delete(jsonFile);
+                    File.WriteAllText(jsonFile, model.Data);
+                }
+            }
+
+            await Task.CompletedTask;
         }
 
         public string GetHtmlTemplate(string template)

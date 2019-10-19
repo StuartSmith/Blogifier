@@ -19,7 +19,7 @@ dotnet App.dll
 This should start application at `http://localhost:5000/` so it can be tested locally
 before uploading to host server.
 
-### Demo option
+### Build options
 Running build with `demo` flag will publish output with demo option turned on 
 (password updates disabled).
 

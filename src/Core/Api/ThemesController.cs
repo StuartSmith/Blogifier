@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Core.Api
@@ -70,13 +69,64 @@ namespace Core.Api
                 {
                     theme.Content = id;
                 }
-                _data.Complete();
 
-                return Ok(Resources.Updated);
+                if (_store.SelectTheme(theme.Content))
+                {
+                    _data.Complete();
+                    return Ok(Resources.Updated);
+                }
+                else
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, "File Storage Failure");
+                }
             }
             catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, "Database Failure");
+            }
+        }
+
+        /// <summary>
+        /// Get theme settings from data.json (admins only)
+        /// </summary>
+        /// <param name="theme">Theme name</param>
+        /// <returns>Json data</returns>
+        [Administrator]
+        [HttpGet("data")]
+        public ActionResult<string> GetThemeData(string theme)
+        {
+            try
+            {
+                var results = _store.GetThemeData(theme);
+
+                return Ok(results);
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "File System Failure");
+            }
+        }
+
+        /// <summary>
+        /// Saves theme data (theme/assets/data.json file, admins only)
+        /// </summary>
+        /// <param name="model">Theme data model</param>
+        /// <returns>Ok or error</returns>
+        [Administrator]
+        [HttpPost("data")]
+        public async Task<IActionResult> SaveThemeData(ThemeDataModel model)
+        {
+            try
+            {
+                var settings = await _data.CustomFields.GetBlogSettings();
+                var isActive = settings.Theme == model.Theme;
+
+                await _store.SaveThemeData(model, isActive);
+                return Ok("Created");
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "File save error");
             }
         }
 
@@ -92,14 +142,10 @@ namespace Core.Api
             try
             {
                 var themeContent = $"{AppSettings.WebRootPath}{slash}themes{slash}{id.ToLower()}";
-                var themeViews = $"{AppSettings.ContentRootPath}{slash}Views{slash}Themes{slash}{id}";
                 try
                 {
                     if (Directory.Exists(themeContent))
                         Directory.Delete(themeContent, true);
-
-                    if (Directory.Exists(themeViews))
-                        Directory.Delete(themeViews, true);
                 }
                 catch (Exception ex)
                 {
@@ -116,34 +162,26 @@ namespace Core.Api
         List<ThemeItem> GetThemes()
         {
             var themes = new List<ThemeItem>();
-            var combined = new List<string>();
+            var themeList = _store.GetThemes();
 
-            var storageThemes = _store.GetThemes();
-
-            if (storageThemes != null)
-                combined.AddRange(storageThemes);
-
-            if (AppConfig.EmbeddedThemes != null)
-                combined.AddRange(AppConfig.EmbeddedThemes);
-
-            combined = combined.Distinct().ToList();
-            combined.Sort();
-
-            if (combined != null && combined.Count > 0)
+            if (themeList != null && themeList.Count > 0)
             {
                 var current = new ThemeItem();
-                foreach (var theme in combined)
+                foreach (var themeTitle in themeList)
                 {
+                    var theme = themeTitle.ToLower();
                     var slash = Path.DirectorySeparatorChar.ToString();
-                    var file = $"{AppSettings.WebRootPath}{slash}themes{slash}{theme}{slash}{theme}.png";
+                    var file = $"{AppSettings.WebRootPath}{slash}themes{slash}{theme}{slash}{Constants.ThemeScreenshot}";
+                    var data = $"{AppSettings.WebRootPath}{slash}themes{slash}{theme}{slash}assets{slash}{Constants.ThemeDataFile}";
                     var item = new ThemeItem
                     {
-                        Title = theme,
-                        Cover = System.IO.File.Exists(file) ? $"themes/{theme}/{theme}.png" : "lib/img/img-placeholder.png",
-                        IsCurrent = theme == _blog.Theme
+                        Title = themeTitle,
+                        Cover = System.IO.File.Exists(file) ? $"themes/{theme}/{Constants.ThemeScreenshot}" : Constants.ImagePlaceholder,
+                        IsCurrent = theme == _blog.Theme.ToLower(),
+                        HasSettings = System.IO.File.Exists(data)
                     };
 
-                    if (theme == _blog.Theme)
+                    if (theme == _blog.Theme.ToLower())
                         current = item;
                     else
                         themes.Add(item);
@@ -160,5 +198,6 @@ namespace Core.Api
         public string Title { get; set; }
         public string Cover { get; set; }
         public bool IsCurrent { get; set; }
+        public bool HasSettings { get; set; }
     }
 }

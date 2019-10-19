@@ -23,10 +23,12 @@ namespace App
     public class Startup
     {
         public IConfiguration Configuration { get; }
+        public IHostingEnvironment Environment { get; }
 
-        public Startup(IConfiguration configuration)
+        public Startup(IConfiguration configuration, IHostingEnvironment environment)
         {
             Configuration = configuration;
+            Environment = environment;
 
             Log.Logger = new LoggerConfiguration()
               .Enrich.FromLogContext()
@@ -47,6 +49,10 @@ namespace App
             else if (section.GetValue<string>("DbProvider") == "MySql")
             {
                 AppSettings.DbOptions = options => options.UseMySql(section.GetValue<string>("ConnString"));
+            }
+            else if (section.GetValue<string>("DbProvider") == "Postgres")
+            {
+                AppSettings.DbOptions = options => options.UseNpgsql(section.GetValue<string>("ConnString"));
             }
             else
             {
@@ -76,6 +82,8 @@ namespace App
                 var supportedCultures = new[]
                 {
                     new CultureInfo("en-US"),
+                    new CultureInfo("es-ES"),
+                    new CultureInfo("pt-BR"),
                     new CultureInfo("ru-RU"),
                     new CultureInfo("zh-cn"),
                     new CultureInfo("zh-tw")
@@ -104,42 +112,59 @@ namespace App
             .AddApplicationPart(typeof(Core.Api.AuthorsController).GetTypeInfo().Assembly).AddControllersAsServices()
             .SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
-            services.AddSwaggerGen(setupAction => {
-                setupAction.SwaggerDoc("spec",
+            if (Environment.IsDevelopment())
+            {
+                services.AddSwaggerGen(setupAction => {
+                    setupAction.SwaggerDoc("spec",
                     new Microsoft.OpenApi.Models.OpenApiInfo()
                     {
                         Title = "Blogifier API",
                         Version = "1"
                     });
-                setupAction.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, "CoreAPI.xml"));
+                    setupAction.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, "CoreAPI.xml"));
+                });
+            }
+            
+            services.AddSpaStaticFiles(configuration =>
+            {
+                configuration.RootPath = "wwwroot/themes/_active";
+            });
+            services.AddCors(c =>
+            {
+                c.AddPolicy("AllowOrigin", options => options
+                    .AllowAnyOrigin()
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                );
             });
 
             services.AddAppServices();
         }
 
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app)
         {
-            if (env.IsDevelopment())
+            if (Environment.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+
+                app.UseSwagger();
+                app.UseSwaggerUI(setupAction =>
+                {
+                    setupAction.SwaggerEndpoint(
+                        "/swagger/spec/swagger.json",
+                        "Blogifier API"
+                    );
+                });
             }
 
             app.UseCookiePolicy();
             app.UseAuthentication();
             app.UseStaticFiles();
-            app.UseRequestLocalization();
+            app.UseSpaStaticFiles();
+            app.UseRequestLocalization();        
 
-            app.UseSwagger();
-            app.UseSwaggerUI(setupAction =>
-            {
-                setupAction.SwaggerEndpoint(
-                    "/swagger/spec/swagger.json",
-                    "Blogifier API"
-                );
-            });
-
-            AppSettings.WebRootPath = env.WebRootPath;
-            AppSettings.ContentRootPath = env.ContentRootPath;
+            AppSettings.WebRootPath = Environment.WebRootPath;
+            AppSettings.ContentRootPath = Environment.ContentRootPath;
 
             app.UseMvc(routes =>
             {
@@ -147,6 +172,9 @@ namespace App
                     name: "default",
                     template: "{controller=Blog}/{action=Index}/{id?}");
             });
+
+            app.UseSpa(spa => { });
+            app.UseCors(options => options.AllowAnyOrigin());
         }
     }
 }

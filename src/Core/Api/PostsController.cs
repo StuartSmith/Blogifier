@@ -1,12 +1,13 @@
 ﻿using Core.Data;
 using Core.Helpers;
 using Core.Services;
-using Markdig;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Core.Api
@@ -16,14 +17,16 @@ namespace Core.Api
     public class PostsController : ControllerBase
     {
         IDataService _data;
+        IEmailService _email;
 
-        public PostsController(IDataService data)
+        public PostsController(IDataService data, IEmailService email)
         {
             _data = data;
+            _email = email;
         }
 
         /// <summary>
-        /// Search blog posts by term
+        /// Search blog posts by term (CORS enabled)
         /// </summary>
         /// <param name="term">Search term</param>
         /// <param name="author">Author</param>
@@ -32,6 +35,7 @@ namespace Core.Api
         /// <param name="format">Otput format: html or markdown; default = html;</param>
         /// <returns>Model with list of posts and pager</returns>
         [HttpGet("search/{term}")]
+        [EnableCors("AllowOrigin")]
         public async Task<ActionResult<PageListModel>> Search(
             string term, 
             [FromQuery]string author = "",
@@ -52,8 +56,8 @@ namespace Core.Api
                 {
                     foreach (var p in results)
                     {
-                        p.Description = Markdown.ToHtml(p.Description);
-                        p.Content = Markdown.ToHtml(p.Content);
+                        p.Description = p.Description.MdToHtml();
+                        p.Content = p.Content.MdToHtml();
                     }
                 }
 
@@ -66,7 +70,7 @@ namespace Core.Api
         }
 
         /// <summary>
-        /// Get list of blog posts
+        /// Get list of blog posts (CORS enabled)
         /// </summary>
         /// <param name="author">Post author</param>
         /// <param name="category">Post category</param>
@@ -75,6 +79,7 @@ namespace Core.Api
         /// <param name="format">Otput format: html or markdown; default = html;</param>
         /// <returns>Model with list of posts and pager</returns>
         [HttpGet]
+        [EnableCors("AllowOrigin")]
         public async Task<ActionResult<PageListModel>> Get(
             [FromQuery]string author = "",
             [FromQuery]string category = "",
@@ -95,8 +100,8 @@ namespace Core.Api
                 {
                     foreach (var p in results)
                     {
-                        p.Description = Markdown.ToHtml(p.Description);
-                        p.Content = Markdown.ToHtml(p.Content);
+                        p.Description = p.Description.MdToHtml();
+                        p.Content = p.Content.MdToHtml();
                     }
                 }
 
@@ -109,12 +114,64 @@ namespace Core.Api
         }
 
         /// <summary>
-        /// Get single post by ID
+        /// Get list of popular, most viewed blog posts (CORS enabled)
+        /// </summary>
+        /// <param name="author">Post author</param>
+        /// <param name="page">Page number</param>
+        /// <param name="format">Otput format: html or markdown; default = html;</param>
+        /// <returns>Model with list of posts and pager</returns>
+        [HttpGet("popular")]
+        [EnableCors("AllowOrigin")]
+        public async Task<ActionResult<PageListModel>> GetPopular(
+            [FromQuery]string author = "",
+            [FromQuery]int page = 1,
+            [FromQuery]string format = "html")
+        {
+            try
+            {
+                var blog = await _data.CustomFields.GetBlogSettings();
+                IEnumerable<PostItem> results;
+                var pager = new Pager(page, blog.ItemsPerPage);
+                int authorId = GetUserId(author);
+
+                results = await _data.BlogPosts.GetPopular(pager, authorId);
+
+                if (format.ToUpper() == "HTML")
+                {
+                    foreach (var p in results)
+                    {
+                        p.Description = p.Description.MdToHtml();
+                        p.Content = p.Content.MdToHtml();
+                    }
+                }
+
+                return Ok(new PageListModel { Posts = results, Pager = pager });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "Database Failure");
+            }
+        }
+
+        /// <summary>
+        /// Get blog categories (CORS enabled)
+        /// </summary>
+        /// <returns>List of all blog categories</returns>
+        [HttpGet("categories")]
+        [EnableCors("AllowOrigin")]
+        public async Task<IEnumerable<CategoryItem>> Categories()
+        {
+            return await _data.BlogPosts.Categories();
+        }
+
+        /// <summary>
+        /// Get single post by ID (CORS enabled)
         /// </summary>
         /// <param name="id">Post ID</param>
         /// <param name="format">Otput format: html or markdown; default = html;</param>
         /// <returns>Post item</returns>
         [HttpGet("{id}")]
+        [EnableCors("AllowOrigin")]
         public async Task<PostItem> GetPost(int id, [FromQuery]string format = "html")
         {
             if (id > 0)
@@ -122,8 +179,8 @@ namespace Core.Api
                 var post = await _data.BlogPosts.GetItem(p => p.Id == id, !User.Identity.IsAuthenticated);
                 if (format.ToUpper() == "HTML")
                 {
-                    post.Description = Markdown.ToHtml(post.Description);
-                    post.Content = Markdown.ToHtml(post.Content);
+                    post.Description = post.Description.MdToHtml();
+                    post.Content = post.Content.MdToHtml();
                 }
                 return post;
             }
@@ -133,6 +190,46 @@ namespace Core.Api
                 var blog = await _data.CustomFields.GetBlogSettings();
                 return new PostItem { Author = author, Cover = blog.Cover };
             }               
+        }
+
+
+        /// <summary>
+        /// Get single post by Slug (CORS enabled)
+        /// </summary>
+        /// <param name="slug">Post Slug</param>
+        /// <param name="format">Otput format: html or markdown; default = html;</param>
+        /// <returns>Post model</returns>
+        [HttpGet("byslug/{slug}")]
+        [EnableCors("AllowOrigin")]
+        public async Task<PostModel> GetBySlug(string slug, [FromQuery]string format = "html")
+        {
+            if (!string.IsNullOrEmpty(slug))
+            {
+                var model = await _data.BlogPosts.GetModel(slug);
+                model.Blog = await _data.CustomFields.GetBlogSettings();
+
+                if (!User.Identity.IsAuthenticated)
+                {
+                    model.Post.Author.Email = Constants.DummyEmail;
+
+                    if (model.Older != null)
+                        model.Older.Author.Email = Constants.DummyEmail;
+                    if (model.Newer != null)
+                        model.Newer.Author.Email = Constants.DummyEmail;
+                }                 
+
+                if (format.ToUpper() == "HTML")
+                {
+                    model.Post.Description = model.Post.Description.MdToHtml();
+                    model.Post.Content = model.Post.Content.MdToHtml();
+                }
+                return model;
+            }
+            else
+            {
+                var blog = await _data.CustomFields.GetBlogSettings();
+                return new PostModel { Blog = blog };
+            }
         }
 
         /// <summary>
@@ -158,6 +255,10 @@ namespace Core.Api
                 }
                 await Task.CompletedTask;
 
+                if(flag == "P")
+                {
+                    await SendNewsletters(post);
+                }
                 return Ok(Resources.Updated);
             }
             catch (Exception ex)
@@ -208,8 +309,21 @@ namespace Core.Api
         {
             try
             {
+                bool alreadyPublished = false;
+                if (post.Id > 0)
+                {
+                    var existing = _data.BlogPosts.Single(p => p.Id == post.Id);
+                    alreadyPublished = existing.Published > DateTime.MinValue;
+                }
                 post.Slug = await GetSlug(post.Id, post.Title);
                 var saved = await _data.BlogPosts.SaveItem(post);
+
+                if(post.IsPublished && !alreadyPublished)
+                {
+                    var savedPost = _data.BlogPosts.Single(p => p.Id == saved.Id);
+                    await SendNewsletters(savedPost);
+                }
+
                 return Created($"admin/posts/edit?id={saved.Id}", saved);
             }
             catch (Exception ex)
@@ -275,6 +389,20 @@ namespace Core.Api
             }
 
             return await Task.FromResult(slug);
+        }
+
+        async Task SendNewsletters(BlogPost post)
+        {
+            var pager = new Pager(1, 1000);
+            IEnumerable<Newsletter> newsletters;
+            newsletters = await _data.Newsletters.GetList(e => e.Id > 0, pager);
+
+            var emails = newsletters.Select(i => i.Email).ToList();
+            if (emails != null && emails.Count > 0)
+            {
+                var siteUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+                await _email.SendNewsletters(post, emails, siteUrl);
+            }
         }
 
         int GetUserId(string author)

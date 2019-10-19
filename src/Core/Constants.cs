@@ -4,6 +4,7 @@
     {
         public static string ConfigSectionKey = "Blogifier";
         public static string ConfigRepoKey = "GithubRepoUrl";
+        public static string ConfigNotificationsKey = "GithubNotificationsUrl";
 
         public static string NewestVersion = "last-version";
         public static string UpgradeDirectory = "_upgrade";
@@ -19,6 +20,10 @@
 
         public static string DummyEmail = "dummy@blog.com";
 
+        public static string DefaultAvatar = "lib/img/avatar.jpg";
+        public static string ImagePlaceholder = "lib/img/img-placeholder.png";
+        public static string ThemeScreenshot = "screenshot.png";
         public static string ThemeEditReturnUrl = "~/admin/settings/theme";
+        public static string ThemeDataFile = "data.json";
     }
 }

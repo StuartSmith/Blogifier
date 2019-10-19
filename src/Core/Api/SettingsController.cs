@@ -11,6 +11,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Builder;
 using System.Linq;
 using Core.Helpers;
+using Microsoft.AspNetCore.Cors;
 
 namespace Core.Api
 {
@@ -51,11 +52,11 @@ namespace Core.Api
         }
 
         /// <summary>
-        /// Get blog settings (admins only)
+        /// Get blog settings (CORS enabled)
         /// </summary>
         /// <returns>Blog settings</returns>
         [HttpGet]
-        [Administrator]
+        [EnableCors("AllowOrigin")]
         public async Task<ActionResult<BlogItem>> Get()
         {
             try
@@ -100,6 +101,11 @@ namespace Core.Api
             }
         }
 
+        /// <summary>
+        /// Import posts from RSS feed (admins only)
+        /// </summary>
+        /// <param name="file">XML file</param>
+        /// <returns>List of messages</returns>
         [HttpPost("importfeed")]
         [Administrator]
         public async Task<IEnumerable<ImportMessage>> ImportFeed(IFormFile file)
@@ -107,13 +113,18 @@ namespace Core.Api
             var author = _data.Authors.Single(a => a.AppUserName == User.Identity.Name);
 
             if (!author.IsAdmin)
-                Redirect("~/pages/shared/_error/403");
+                throw new ApplicationException("Unauthorized");
 
             var webRoot = Url.Content("~/");
 
             return await _feed.Import(file, User.Identity.Name, webRoot);
         }
 
+        /// <summary>
+        /// Remove notification (admins only)
+        /// </summary>
+        /// <param name="id">Id</param>
+        /// <returns>Completed task</returns>
         [HttpDelete("removenotification/{id}")]
         [Administrator]
         public async Task RemoveNotification(int id)

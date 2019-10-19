@@ -38,7 +38,7 @@
         </member>
         <member name="M:Core.Api.AuthorsController.Get(System.Int32)">
             <summary>
-            Get list of blog authors
+            Get list of blog authors (CORS enabled)
             </summary>
             <param name="page">Page number</param>
             <returns>List of authors</returns>
@@ -78,9 +78,52 @@
             <param name="id">Author ID</param>
             <returns>Success or 500 error</returns>
         </member>
+        <member name="M:Core.Api.NotificationsController.GetSubscriptions(System.Int32)">
+            <summary>
+            List of newsletter subscriptions (admins only)
+            </summary>
+            <param name="page">Page number</param>
+            <returns>List of subscribers</returns>
+        </member>
+        <member name="M:Core.Api.NotificationsController.Subscribe(System.String)">
+            <summary>
+            Subscribe to newsletter (CORS enabled)
+            </summary>
+            <param name="email">Subscriber email</param>
+            <returns>Error message or empty string if successful</returns>
+        </member>
+        <member name="M:Core.Api.NotificationsController.Unsubscribe(System.String)">
+            <summary>
+            Unsubscribe from newsletter (admins only)
+            </summary>
+            <param name="email">Subscriber email</param>
+            <returns>Ok on success</returns>
+        </member>
+        <member name="M:Core.Api.NotificationsController.Contact(Core.Data.Models.ContactModel)">
+            <summary>
+            "Contact us" form notifications (CORS enabled)
+            </summary>
+            <param name="model">Contact model</param>
+            <returns>Ok</returns>
+        </member>
+        <member name="M:Core.Api.NotificationsController.GetNotifications(System.String,System.Int32)">
+            <summary>
+            Get notifications by type (admins only)
+            </summary>
+            <param name="type">Notification type, like contact, newsletter etc</param>
+            <param name="page">Page number</param>
+            <returns>List of notifications</returns>
+        </member>
+        <member name="M:Core.Api.NotificationsController.Delete(System.Int32)">
+            <summary>
+            Remove notification (admins only)
+            </summary>
+            <param name="id">Notification ID</param>
+            <returns>Ok on success</returns>
+        </member>
         <member name="M:Core.Api.PostsController.Search(System.String,System.String,System.String,System.Int32,System.String)">
             <summary>
-            Search blog posts by term
+            Search blog posts by term (CORS enabled)
             </summary>
             <param name="term">Search term</param>
             <param name="author">Author</param>
@@ -91,7 +134,7 @@
         </member>
         <member name="M:Core.Api.PostsController.Get(System.String,System.String,System.String,System.Int32,System.String)">
             <summary>
-            Get list of blog posts
+            Get list of blog posts (CORS enabled)
             </summary>
             <param name="author">Post author</param>
             <param name="category">Post category</param>
@@ -100,13 +143,36 @@
             <param name="format">Otput format: html or markdown; default = html;</param>
             <returns>Model with list of posts and pager</returns>
         </member>
+        <member name="M:Core.Api.PostsController.GetPopular(System.String,System.Int32,System.String)">
+            <summary>
+            Get list of popular, most viewed blog posts (CORS enabled)
+            </summary>
+            <param name="author">Post author</param>
+            <param name="page">Page number</param>
+            <param name="format">Otput format: html or markdown; default = html;</param>
+            <returns>Model with list of posts and pager</returns>
+        </member>
+        <member name="M:Core.Api.PostsController.Categories">
+            <summary>
+            Get blog categories (CORS enabled)
+            </summary>
+            <returns>List of all blog categories</returns>
+        </member>
         <member name="M:Core.Api.PostsController.GetPost(System.Int32,System.String)">
             <summary>
-            Get single post by ID
+            Get single post by ID (CORS enabled)
             </summary>
             <param name="id">Post ID</param>
             <param name="format">Otput format: html or markdown; default = html;</param>
             <returns>Post item</returns>
+        </member>
+        <member name="M:Core.Api.PostsController.GetBySlug(System.String,System.String)">
+            <summary>
+            Get single post by Slug (CORS enabled)
+            </summary>
+            <param name="slug">Post Slug</param>
+            <param name="format">Otput format: html or markdown; default = html;</param>
+            <returns>Post model</returns>
         </member>
         <member name="M:Core.Api.PostsController.Publish(System.Int32,System.String)">
             <summary>
@@ -138,6 +204,12 @@
             <param name="id">Post ID</param>
             <returns>Success or failure</returns>
         </member>
+        <member name="M:Core.Api.SecurityController.GetUser">
+            <summary>
+            Get user authentication info
+            </summary>
+            <returns>User authentication object</returns>
+        </member>
         <member name="M:Core.Api.SettingsController.GetCultures">
             <summary>
             Get list of cultures
@@ -146,7 +218,7 @@
         </member>
         <member name="M:Core.Api.SettingsController.Get">
             <summary>
-            Get blog settings (admins only)
+            Get blog settings (CORS enabled)
             </summary>
             <returns>Blog settings</returns>
         </member>
@@ -156,6 +228,20 @@
             </summary>
             <param name="model">Blog settings item</param>
             <returns>Saved blog item</returns>
+        </member>
+        <member name="M:Core.Api.SettingsController.ImportFeed(Microsoft.AspNetCore.Http.IFormFile)">
+            <summary>
+            Import posts from RSS feed (admins only)
+            </summary>
+            <param name="file">XML file</param>
+            <returns>List of messages</returns>
+        </member>
+        <member name="M:Core.Api.SettingsController.RemoveNotification(System.Int32)">
+            <summary>
+            Remove notification (admins only)
+            </summary>
+            <param name="id">Id</param>
+            <returns>Completed task</returns>
         </member>
         <member name="M:Core.Api.ThemesController.Get(System.Int32)">
             <summary>
@@ -170,6 +256,20 @@
             </summary>
             <param name="id">Theme ID</param>
             <returns>Success or failure</returns>
+        </member>
+        <member name="M:Core.Api.ThemesController.GetThemeData(System.String)">
+            <summary>
+            Get theme settings from data.json (admins only)
+            </summary>
+            <param name="theme">Theme name</param>
+            <returns>Json data</returns>
+        </member>
+        <member name="M:Core.Api.ThemesController.SaveThemeData(Core.Data.ThemeDataModel)">
+            <summary>
+            Saves theme data (theme/assets/data.json file, admins only)
+            </summary>
+            <param name="model">Theme data model</param>
+            <returns>Ok or error</returns>
         </member>
         <member name="M:Core.Api.ThemesController.Delete(System.String)">
             <summary>
